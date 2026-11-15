@@ -1,0 +1,32 @@
+# 依赖
+node_modules/
+**/node_modules/
+
+# 构建产物（可源码重建）
+dist/
+**/dist/
+unpackage/
+
+# 渲染截图、预览产物
+_preview/
+
+# 环境变量与密钥
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+scripts/_probe.txt
+_dl/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
