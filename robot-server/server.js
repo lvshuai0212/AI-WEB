@@ -4,7 +4,7 @@ const path = require('path')
 const config = require('./config')
 
 const app = express()
-const PORT = process.env.PORT || 3000
+const PORT = config.PORT
 
 app.use(express.json({ limit: '2mb' }))
 
@@ -191,7 +191,10 @@ function toDrugCards(recs, candidates) {
 app.post('/chat', async (req, res) => {
   try {
     if (!config.DOUBAO_API_KEY) {
-      return res.status(503).json({ error: '服务端未配置豆包 API Key，请在 robot-server/config.js 中填写 DOUBAO_API_KEY' })
+      return res.status(503).json({
+        error: 'AI 服务暂不可用：未配置豆包 API Key',
+        hint: '二选一：① 在 robot-server/.env 写入 DOUBAO_API_KEY=你的Key；② 启动前设置同名环境变量。修改后需重启服务端。'
+      })
     }
     const { messages } = req.body
     if (!messages || !Array.isArray(messages) || !messages.length) {
@@ -339,11 +342,34 @@ app.post('/drug-orders', (req, res) => {
   res.json({ ok: true, data: order })
 })
 
+// 科普阅读量：进入详情时真实 +1 并落盘（前端按会话去重，避免刷新重复计数）
+app.post('/knowledge/:id/read', (req, res) => {
+  const id = String(req.params.id)
+  const db = router.db
+  const state = db.getState()
+  const article = (state.knowledge || []).find(k => String(k.id) === id)
+  if (!article) return res.status(404).json({ ok: false, error: '科普不存在' })
+  article.readCount = (Number(article.readCount) || 0) + 1
+  db.write()
+  res.json({ ok: true, id: article.id, readCount: article.readCount })
+})
+
 app.use(middlewares)
 app.use(router)
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  Health Server running at http://0.0.0.0:${PORT}`)
-  console.log(`  REST API  +  AI Chat POST /chat`)
-  console.log(`  AI Key 已配置: ${config.DOUBAO_API_KEY ? '是' : '否（请填写 config.js）'}\n`)
+  console.log(`  REST API: http://127.0.0.1:${PORT}/users    AI Chat: POST /chat`)
+  if (config.DOUBAO_API_KEY) {
+    console.log(`  豆包 AI Key: 已配置（模型 ${config.DOUBAO_MODEL}）`)
+  } else {
+    console.log('  豆包 AI Key: 未配置，/chat 将返回 503。配置方式（任选其一）：')
+    console.log('    1) 复制 robot-server/.env.example 为 robot-server/.env，填写 DOUBAO_API_KEY=你的Key')
+    console.log('    2) PowerShell: $env:DOUBAO_API_KEY="你的Key"; npm start')
+    console.log('  修改后需重启本服务。')
+  }
+  if (PORT !== 3000) {
+    console.log(`  提示：已改用端口 ${PORT}，请同步后台的 API_TARGET 与居民端 BASE_URL。`)
+  }
+  console.log('')
 })

@@ -1,5 +1,28 @@
+const fs = require('fs')
+const path = require('path')
+
+// 读取本地 .env（未入库），零依赖实现；已存在的进程环境变量优先级更高
+function loadDotEnv() {
+  const file = path.join(__dirname, '.env')
+  if (!fs.existsSync(file)) return
+  const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
+  for (const line of lines) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
+    if (!m) continue
+    const key = m[1]
+    let val = m[2].trim()
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1)
+    }
+    if (process.env[key] === undefined) process.env[key] = val
+  }
+}
+
+loadDotEnv()
+
 module.exports = {
-  // 请在此处填写你自己的豆包（火山方舟）API Key，或使用环境变量 DOUBAO_API_KEY 注入
+  PORT: Number(process.env.PORT) || 3000,
+  // 豆包（火山方舟）API Key：环境变量优先，其次 robot-server/.env，仓库内不保存真实 Key
   DOUBAO_API_KEY: process.env.DOUBAO_API_KEY || '',
   DOUBAO_API_URL: process.env.DOUBAO_API_URL || 'https://ark.cn-beijing.volces.com/api/v3/responses',
   DOUBAO_MODEL: process.env.DOUBAO_MODEL || 'doubao-seed-evolving',
