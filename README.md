@@ -1,7 +1,7 @@
 # 社区健康守护（health-AIweb-project）
 
 社区健康管理平台，服务社区卫生服务中心与辖区居民，包含三部分：Vue3 + Element Plus 管理后台（`robot-admin`）、uni-app 居民端（H5 / 微信小程序，`robot-mini-app`）、Express + json-server 数据服务（`robot-server`，含豆包 AI 健康顾问代理）。启动方式：三个目录分别执行 `npm install`，再分别运行 `npm run dev`（后台 5173）、`npm run dev:h5`（居民端 5174）、`npm start`（服务端 3000）。
-> 本项目以 `vue-AIweb-project`（机器人学习打卡）为模板复制并整体改造为「社区健康管理 / 慢病随访」主题，技术栈、目录结构、接口命名、构建脚本均沿用原模板。
+> 本项目以 `vue-AIweb-project`为模板复制并整体改造为「社区健康管理 / 慢病随访」主题，技术栈、目录结构、接口命名、构建脚本均沿用原模板。
 
 ## 一、目录结构
 
