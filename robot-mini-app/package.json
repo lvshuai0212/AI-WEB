@@ -4,10 +4,10 @@
   "description": "社区健康守护 - 居民健康管理小程序",
   "main": "main.js",
   "scripts": {
-    "dev:mp-weixin": "uni -p mp-weixin",
-    "build:mp-weixin": "uni build -p mp-weixin",
-    "dev:h5": "uni",
-    "build:h5": "uni build"
+    "dev:mp-weixin": "set UNI_INPUT_DIR=.&& uni -p mp-weixin",
+    "build:mp-weixin": "set UNI_INPUT_DIR=.&& uni build -p mp-weixin",
+    "dev:h5": "set UNI_INPUT_DIR=.&& uni",
+    "build:h5": "set UNI_INPUT_DIR=.&& uni build"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4010520240507001",

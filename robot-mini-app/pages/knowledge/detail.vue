@@ -91,7 +91,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getKnowledgeById, getKnowledge, getCurrentUser, getUserCheckins, doCheckin, checkLogin } from '../../utils/api.js'
+import { getKnowledgeById, getKnowledge, getCurrentUser, getUserCheckins, doCheckin, checkLogin, markKnowledgeRead } from '../../utils/api.js'
 
 const article = ref(null)
 const allKnowledge = ref([])
@@ -109,8 +109,26 @@ function getCover(id) { return `/static/image/${((id - 1) % 9) + 1}.jpg` }
 
 function todayStr() { return new Date().toISOString().split('T')[0] }
 
+// 同一次会话内同一篇只计一次阅读：H5 用 sessionStorage（刷新仍算同一会话），小程序用内存标记
+const viewedInSession = new Set()
+function viewedKey(id) { return 'knowledgeRead:' + id }
+function hasViewed(id) {
+  if (viewedInSession.has(String(id))) return true
+  try { return sessionStorage.getItem(viewedKey(id)) === '1' } catch (e) { return false }
+}
+function rememberViewed(id) {
+  viewedInSession.add(String(id))
+  try { sessionStorage.setItem(viewedKey(id), '1') } catch (e) {}
+}
+
 async function loadDetail(id) {
   article.value = await getKnowledgeById(id)
+  if (!hasViewed(id)) {
+    rememberViewed(id)
+    markKnowledgeRead(id)
+      .then(r => { if (article.value && r && r.ok) article.value.readCount = r.readCount })
+      .catch(() => {})
+  }
   allKnowledge.value = await getKnowledge()
   const user = getCurrentUser()
   if (user?.id) {

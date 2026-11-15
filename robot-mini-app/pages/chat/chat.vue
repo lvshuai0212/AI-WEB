@@ -40,7 +40,8 @@
               <text class="retry-text">重新发送 ›</text>
             </view>
           </view>
-          <image class="bubble-avatar img" v-if="msg.role === 'user'" :src="userAvatar" mode="aspectFill" />
+          <image class="bubble-avatar img" v-if="msg.role === 'user' && hasUserAvatar" :src="userAvatar" mode="aspectFill" />
+          <view class="bubble-avatar bubble-avatar-text" v-else-if="msg.role === 'user'" :style="{ background: userColor }">{{ userInitial }}</view>
         </view>
 
         <view class="drug-cards" v-if="msg.recommend && msg.recommend.length">
@@ -106,7 +107,7 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import { onLoad, onReady } from '@dcloudio/uni-app'
-import { chatWithAI, getCurrentUser, drugCoverMeta } from '../../utils/api.js'
+import { chatWithAI, getCurrentUser, drugCoverMeta, resolveAvatar, avatarInitial, avatarColor } from '../../utils/api.js'
 
 const WELCOME = '你好，我是「社区健康守护」的 AI 健康顾问。可以问我慢病日常管理、饮食运动、用药注意事项等问题。如有胸痛、呼吸困难、意识不清等急症，请立即拨打 120。'
 // 旧版本未配置 Key 时写入本地缓存的失败提示，加载时清理
@@ -121,13 +122,11 @@ const showScrollBtn = ref(false)
 let bodyHeight = 0
 
 const coverMeta = drugCoverMeta
-const userAvatar = computed(() => {
-  const a = getCurrentUser()?.avatar || ''
-  if (!a) return '/static/image/logo.jpg'
-  // 后端返回 /image/xxx.jpg，H5 静态资源在 /static/image 下
-  if (a.startsWith('/image/')) return '/static/image/' + a.slice('/image/'.length)
-  return a
-})
+const currentUser = computed(() => getCurrentUser())
+const userAvatar = computed(() => resolveAvatar(currentUser.value?.avatar))
+const hasUserAvatar = computed(() => !!userAvatar.value)
+const userInitial = computed(() => avatarInitial(currentUser.value?.nickname))
+const userColor = computed(() => avatarColor(currentUser.value?.nickname))
 const canSend = computed(() => !!inputText.value.trim() && !sending.value)
 
 const quickQuestions = [
@@ -353,6 +352,7 @@ onReady(() => {
 }
 .bubble-avatar-emoji { font-size: 32rpx; }
 .bubble-avatar.img { object-fit: cover; }
+.bubble-avatar-text { color: #fff; font-size: 28rpx; font-weight: 700; }
 .bubble {
   max-width: 74%;
   padding: 20rpx 24rpx;

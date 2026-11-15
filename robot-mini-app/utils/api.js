@@ -1,18 +1,40 @@
 // API 基础地址
-// H5 开发直连 json-server（避免 vite 代理 500）；微信小程序真机请改为本机局域网 IP
-// #ifdef H5
-const BASE_URL = 'http://127.0.0.1:3000'
-// #endif
-// #ifndef H5
-const BASE_URL = 'http://127.0.0.1:3000'
-// #endif
+// 优先级：运行时覆盖（uni.setStorageSync('apiBaseUrl', ...)）> 构建环境变量 VITE_API_BASE_URL > 默认本机
+// 真机调试：把地址改成电脑局域网 IP，或调用 setApiBaseUrl('http://192.168.x.x:3000') 后重启小程序
+const DEFAULT_BASE_URL = 'http://127.0.0.1:3000'
 
-export { BASE_URL }
+function envBaseUrl() {
+  try {
+    // Vite 会在 H5 与小程序构建时注入 import.meta.env
+    return (import.meta.env && import.meta.env.VITE_API_BASE_URL) || ''
+  } catch (e) {
+    return ''
+  }
+}
+
+function storedBaseUrl() {
+  try {
+    return uni.getStorageSync('apiBaseUrl') || ''
+  } catch (e) {
+    return ''
+  }
+}
+
+const BASE_URL = (envBaseUrl() || storedBaseUrl() || DEFAULT_BASE_URL).replace(/\/+$/, '')
+
+export function setApiBaseUrl(url) {
+  const value = String(url || '').trim().replace(/\/+$/, '')
+  if (value) uni.setStorageSync('apiBaseUrl', value)
+  else uni.removeStorageSync('apiBaseUrl')
+  return value || DEFAULT_BASE_URL
+}
+
+export { BASE_URL, DEFAULT_BASE_URL }
 
 export function request(options) {
   return new Promise((resolve, reject) => {
     uni.request({
-      url: BASE_URL + options.url,
+      url: (options.baseUrl || BASE_URL) + options.url,
       method: options.method || 'GET',
       data: options.data || {},
       header: {
@@ -61,6 +83,11 @@ export function getKnowledge() {
 
 export function getKnowledgeById(id) {
   return request({ url: '/knowledge/' + id })
+}
+
+// 进入科普详情时自增阅读量，返回 { ok, readCount }
+export function markKnowledgeRead(id) {
+  return request({ url: '/knowledge/' + id + '/read', method: 'POST' })
 }
 
 export function getCheckins() {

@@ -68,7 +68,7 @@
       <view class="card list-card">
         <view class="list-head">
           <text class="section-title">全部排行</text>
-          <text class="list-tip">{{ ranking.length }} 位居民</text>
+          <text class="list-tip">{{ ranking.length }} 位居民 · 仅本社区</text>
         </view>
         <view class="rank-item" v-for="item in ranking" :key="item.id" :class="{ me: item.id === myId }">
           <text class="rank-no" :class="'top' + item.rank">{{ item.rank }}</text>
@@ -84,6 +84,7 @@
           <text class="empty-icon">🏅</text>
           <text class="empty-text">本社区暂无排行数据</text>
         </view>
+        <text class="scope-tip">榜单只统计「{{ className }}」的居民，不同社区的积分规则、活动量不同，跨社区分值不可直接比较。</text>
       </view>
     </view>
   </view>
@@ -185,6 +186,7 @@ onPullDownRefresh(() => loadData().finally(() => uni.stopPullDownRefresh()))
 .empty { display: flex; flex-direction: column; align-items: center; padding: 80rpx 0; }
 .empty-icon { font-size: 70rpx; }
 .empty-text { font-size: 24rpx; color: #aaa; margin-top: 12rpx; }
+.scope-tip { display: block; margin-top: 18rpx; font-size: 21rpx; line-height: 1.6; color: #9AAAB2; }
 
 /* 宽屏：领奖台加高，全部排行两列排布 */
 @media screen and (min-width: 750px) {
