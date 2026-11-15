@@ -17,7 +17,7 @@ health-AIweb-project/
 
 ## 二、启动方式与端口
 
-### 1. 服务端 robot-server（端口 3000）
+### 1. 服务端 robot-server（默认端口 3000）
 
 ```bash
 cd robot-server
@@ -29,7 +29,17 @@ npm start            # 或 node server.js
 - 静态图片：`/image/*`
 - 健康检查：`GET http://localhost:3000/chat/health`
 
-### 2. 后台 robot-admin（端口 5173）
+配置（环境变量优先，其次 `robot-server/.env`，两者都不入库）：
+
+```powershell
+copy .env.example .env      # 方式一：填写 .env
+$env:DOUBAO_API_KEY="你的Key"; npm start   # 方式二：启动前注入
+```
+
+`.env` 支持 `PORT`、`DOUBAO_API_KEY`、`DOUBAO_API_URL`、`DOUBAO_MODEL`。未配置 Key 时，
+启动日志会打印配置指引，`/chat` 返回 503 并给出提示，其余接口不受影响。
+
+### 2. 后台 robot-admin（默认端口 5173）
 
 ```bash
 cd robot-admin
@@ -38,8 +48,29 @@ npm run dev          # http://localhost:5173
 npm run build        # 产物 dist/
 ```
 
-`/api` 由 Vite 代理到 `http://localhost:3000`；如需指向其他端口，可设置环境变量
-`API_TARGET`（本次验证时 3000 被原项目占用，使用 `API_TARGET=http://127.0.0.1:3001`）。
+`/api` 由 Vite 代理到 `http://localhost:3000`，端口与目标均可配置：
+
+| 变量 | 作用 | 示例 |
+| --- | --- | --- |
+| `API_TARGET` | 后台请求转发的服务端地址 | `http://127.0.0.1:3001` |
+| `ADMIN_PORT` | 后台自身端口 | `5174` |
+
+**端口 3000 被占用时的两种处理：**
+
+1. 停掉旧服务（先看占用进程）：
+   ```powershell
+   Get-NetTCPConnection -LocalPort 3000 -State Listen | ForEach-Object { Get-Process -Id $_.OwningProcess }
+   Get-NetTCPConnection -LocalPort 3000 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+   ```
+2. 改用其他端口（三端要一致）：
+   ```powershell
+   # 服务端
+   cd robot-server; $env:PORT='3001'; npm start
+   # 后台（代理指向 3001）
+   cd robot-admin; $env:API_TARGET='http://127.0.0.1:3001'; npm run dev
+   # 居民端
+   cd robot-mini-app; $env:VITE_API_BASE_URL='http://127.0.0.1:3001'; npm run dev:h5
+   ```
 
 登录账号（`db.json → admins`）：
 
@@ -54,33 +85,40 @@ npm run build        # 产物 dist/
 cd robot-mini-app
 npm install
 
-# H5（本项目模板为「根目录即源码目录」，需指定输入目录）
-# PowerShell:
-$env:UNI_INPUT_DIR='.'
-npm run dev:h5       # 或 npm run build:h5，产物 dist/build/h5
+npm run dev:h5       # http://localhost:5174，产物 dist/build/h5
+npm run build:h5
 
-# 微信小程序
 npm run dev:mp-weixin
 npm run build:mp-weixin
 ```
 
-- 接口地址在 `utils/api.js` 的 `BASE_URL`，默认 `http://127.0.0.1:3000`
-- H5 可直接访问；微信开发者工具需勾选“不校验合法域名”，真机预览请改为电脑局域网 IP
+脚本已内置 `UNI_INPUT_DIR=.`（Windows cmd 下用 `set VAR=..&&` 写法），无需手工设变量。
+
+接口地址位于 `utils/api.js`，优先级：运行时 `uni.setStorageSync('apiBaseUrl', ...)`
+> 构建变量 `VITE_API_BASE_URL` > 默认 `http://127.0.0.1:3000`。
+
+**真机调试改为局域网 IP：**
+
+1. `ipconfig` 查到电脑 WLAN 的 IPv4（如 `192.168.1.9`）；
+2. 构建时指定：`$env:VITE_API_BASE_URL='http://192.168.1.9:3000'; npm run build:mp-weixin`
+   （或运行时调用 `setApiBaseUrl('http://192.168.1.9:3000')` 后重启小程序）；
+3. 手机与电脑连同一 WiFi，开发者工具勾选「不校验合法域名」。
+
 - 演示居民账号：`13800138002 / 123456`（李国强，康乐社区，2型糖尿病）
 
 ### 4. AI 健康问答（豆包）
 
-`POST /chat` 为模型代理，`config.js` 中读取：
+`POST /chat` 为模型代理，`config.js` 按「环境变量优先 + `.env` 兜底」读取：
 
 ```js
-DOUBAO_API_KEY: process.env.DOUBAO_API_KEY || ''
-DOUBAO_MODEL:   'doubao-seed-evolving'
+PORT:            Number(process.env.PORT) || 3000
+DOUBAO_API_KEY:  process.env.DOUBAO_API_KEY || ''
+DOUBAO_MODEL:    process.env.DOUBAO_MODEL || 'doubao-seed-evolving'
 ```
 
-**仓库内不含任何真实密钥**，请自行填写 `robot-server/config.js` 的 Key（或用环境变量
-`DOUBAO_API_KEY` 注入）后重启服务。未配置时 `/chat` 返回 503 并提示配置位置，
-其余功能不受影响。场景提示词（`SYSTEM_PROMPT`，健康咨询/慢病管理/饮食运动/用药提醒，
-并要求急症提示就医）由服务端统一注入。
+**仓库内不含任何真实密钥**。配置方式见上文第 1 节（`.env` 或环境变量），改完重启服务端生效。
+未配置时 `/chat` 返回 503 并说明配置路径，其余功能不受影响。场景提示词（`SYSTEM_PROMPT`，
+健康咨询/慢病管理/饮食运动/用药提醒，并要求急症提示就医）由服务端统一注入。
 
 ## 三、页面清单（新 ⇄ 旧对照）
 
@@ -173,7 +211,11 @@ DOUBAO_MODEL:   'doubao-seed-evolving'
 | `robot-server` 启动 | 通过，`3000` 被原项目服务占用时以 `PORT=3001` 验证 |
 | 接口数据 | `/users` 22 条、`/knowledge` 12 条、`/checkins` 48 条、`/notices` 6 条、`/banners` 5 条 |
 | `/chat/health` | 返回 `{ ok: true, model: "doubao-seed-evolving", configured: false }` |
-| `robot-mini-app` `npm run build:h5` | 通过（产物 `dist/build/h5`） |
+| `robot-mini-app` `npm run build:h5` | 通过（脚本内置 `UNI_INPUT_DIR`，产物 `dist/build/h5`） |
+| 构建变量 `VITE_API_BASE_URL` | 通过：产物中出现指定地址，未设置时回退默认 |
+| `.env` 与环境变量优先级 | 通过：`.env` 生效，进程环境变量覆盖同名项 |
+| `POST /knowledge/:id/read` | 通过：阅读量 756 → 757 并落盘 |
+| `/chat` 未配置 Key | 通过：返回 503 且带配置指引，不影响其他接口 |
 | 后台页面渲染 | 见 `_preview/` 截图 |
 
 `_preview/` 截图（1440×900，真实渲染）：
@@ -189,12 +231,19 @@ DOUBAO_MODEL:   'doubao-seed-evolving'
 
 ## 七、待确认 / 遗留问题
 
-1. **豆包 API Key 未配置**：`config.js` 默认为空，AI 健康问答会返回 503，需要自行填写。
-2. **端口 3000 被占用**：本机原 `vue-AIweb-project` 的服务端仍在运行，验证时使用 3001；
-   正式运行前请先停止旧服务，或将新服务端的 `PORT` 与后台 `API_TARGET` 一并调整。
-3. **H5 构建目录**：模板根目录即 uni-app 源码目录，CLI 默认找 `src/`，需设置
-   `UNI_INPUT_DIR='.'`（已在本文档说明，未改动原模板脚本）。
-4. **小程序真机接口地址**：`BASE_URL` 为 `127.0.0.1:3000`，真机需改为电脑局域网 IP。
-5. **居民头像**：`db.json` 中 `avatar` 为空，前端回退为 `logo.jpg`（未编造新图片）。
-6. **排行榜范围**：沿用模板逻辑，按当前居民 `className`（社区）分组排行。
-7. **科普阅读量**：`readCount` 为静态示例值，未做进入详情自增（模板无此接口）。
+原 7 条已全部处理（2026-11-15）：
+
+| # | 原问题 | 处理方式 | 状态 |
+| --- | --- | --- | --- |
+| 1 | 豆包 API Key 未配置 | 环境变量优先 + `.env` 兜底（提供 `.env.example`），启动日志与 503 响应给出配置指引 | 已解决 |
+| 2 | 端口 3000 被占用 | `PORT` / `API_TARGET` / `ADMIN_PORT` 均可配置，README 给出「停旧服务」与「换端口」两种做法 | 已解决 |
+| 3 | H5 构建需手工设 `UNI_INPUT_DIR` | `package.json` 四个脚本内置 `UNI_INPUT_DIR=.`，Windows 直接可跑 | 已解决 |
+| 4 | 小程序真机地址写死 | `VITE_API_BASE_URL` 构建变量 + `setApiBaseUrl()` 运行时覆盖，README 写明局域网 IP 步骤 | 已解决 |
+| 5 | 居民头像回退 `logo.jpg` | 统一为文字头像（姓名首字 + 按姓名稳定取色），聊天页同步；仅用户上传过图片时才显示图片 | 已解决 |
+| 6 | 排行榜范围 | 只统计当前居民 `className` 对应社区，`我的排名` 取自同一列表；榜单底部注明跨社区分值不可比 | 已解决 |
+| 7 | 科普阅读量写死 | 新增 `POST /knowledge/:id/read` 真实自增并落盘；详情页按会话去重，列表与后台显示真实值 | 已解决 |
+
+仍需人工处理的两项（非代码问题）：
+
+- **豆包 Key 需自行填写**：仓库不保存真实 Key，真实模型调用未在本环境验证（无可用 Key）。
+- **微信小程序真机未回归**：H5 已构建通过，真机需按第 3 节步骤改用局域网 IP 后自测。
